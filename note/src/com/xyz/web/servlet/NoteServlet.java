@@ -25,6 +25,13 @@ public class NoteServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getParameter("method") == null) {
+            PrintWriter out = resp.getWriter();
+            out.println("no message for you");
+            out.flush();
+            out.close();
+            return;
+        }
         int method = Integer.parseInt(req.getParameter("method"));
         resp.setContentType("text/json;charset=UTF-8");
         switch (method) {
@@ -32,7 +39,7 @@ public class NoteServlet extends HttpServlet {
                 bakNotes(req, resp);
                 break;
             case 2:
-
+                getNotes(req, resp);
                 break;
             case 3:
 
@@ -41,6 +48,50 @@ public class NoteServlet extends HttpServlet {
             default:
 
         }
+    }
+
+    private void getNotes(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+
+        JSONObject resultJson = new JSONObject();
+        if (req.getParameter("id") == null) {
+            try {
+                resultJson.put("retCode", 1);
+                resultJson.put("msg", "please input user id");
+
+            } catch (JSONException e) {
+
+            }
+
+        } else {
+            long id = Long.parseLong(req.getParameter("id"));
+            NoteDAO noteDAO;
+            try {
+                noteDAO = new NoteDAO();
+                ArrayList<Note> notes = noteDAO.getNotes(id);
+                JSONArray noteJsonArray = new JSONArray();
+                for (Note note : notes) {
+                    JSONObject noteJson = new JSONObject();
+                    noteJson.put("_id", note.getId());
+                    noteJson.put("RemoteId", note.getRemoteId());
+                    noteJson.put("name", note.getName());
+                    noteJson.put("content", note.getContent());
+                    noteJson.put("createdTime", note.getCreatedTime());
+                    noteJsonArray.put(noteJson);
+                }
+
+                resultJson.put("retCode", 0);
+                resultJson.put("msg", "ok");
+                resultJson.put("totalNum", notes.size());
+                resultJson.put("data", noteJsonArray);
+            } catch (SQLException | ClassNotFoundException | JSONException e) {
+                e.printStackTrace();
+                resultJson = Utils.getErrJson(e);
+            }
+        }
+        PrintWriter out = resp.getWriter();
+        out.println(resultJson);
+        out.flush();
+        out.close();
     }
 
 
@@ -95,7 +146,7 @@ public class NoteServlet extends HttpServlet {
                 if (notes.size() == 0) {
                     resultJson.put("ret", 1);
                     resultJson.put("msg", "note number is zero");
-                }else{
+                } else {
 
                     NoteDAO dao = new NoteDAO();
                     for (Note myNote : notes) {
